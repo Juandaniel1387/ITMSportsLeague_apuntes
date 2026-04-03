@@ -10,18 +10,24 @@ public class TournamentService : ITournamentService
 {
     private readonly ITournamentRepository _tournamentRepository;
     private readonly ITournamentTeamRepository _tournamentTeamRepository;
+    private readonly ITournamentSponsorRepository _tournamentSponsorRepository;
+    private readonly ISponsorRepository _sponsorRepository;
     private readonly ITeamRepository _teamRepository;
     private readonly ILogger<TournamentService> _logger;
 
     public TournamentService(
-        ITournamentRepository tournamentRepository,
-        ITournamentTeamRepository tournamentTeamRepository,
-        ITeamRepository teamRepository,
-        ILogger<TournamentService> logger)
+      ITournamentRepository tournamentRepository,
+      ITournamentTeamRepository tournamentTeamRepository,
+      ITeamRepository teamRepository,
+      ITournamentSponsorRepository tournamentSponsorRepository,
+      ISponsorRepository sponsorRepository,
+      ILogger<TournamentService> logger)
     {
         _tournamentRepository = tournamentRepository;
         _tournamentTeamRepository = tournamentTeamRepository;
         _teamRepository = teamRepository;
+        _tournamentSponsorRepository = tournamentSponsorRepository;
+        _sponsorRepository = sponsorRepository;
         _logger = logger;
     }
 
@@ -169,6 +175,59 @@ public class TournamentService : ITournamentService
         await _tournamentTeamRepository.CreateAsync(tournamentTeam);
     }
 
+    public async Task RegisterSponsorAsync(int tournamentId, int sponsorId, decimal contractAmount)
+    {
+        // Validar que el torneo existe
+        var tournament = await _tournamentRepository.GetByIdAsync(tournamentId);
+        if (tournament == null)
+            throw new KeyNotFoundException(
+                $"No se encontró el torneo con ID {tournamentId}");
+
+        // Solo en estado Pending
+        if (tournament.Status != TournamentStatus.Pending)
+        {
+            throw new InvalidOperationException(
+                "Solo se pueden registrar patrocinadores en torneos con estado Pending");
+        }
+
+        // Validar que el sponsor existe
+        var sponsorExists = await _sponsorRepository.ExistsAsync(sponsorId);
+        if (!sponsorExists)
+            throw new KeyNotFoundException(
+                $"No se encontró el sponsor con ID {sponsorId}");
+
+        // Validar que no esté ya registrado
+        var existing = await _tournamentSponsorRepository
+            .GetByTournamentAndSponsorAsync(tournamentId, sponsorId);
+
+        if (existing != null)
+        {
+            throw new InvalidOperationException(
+                "Este sponsor ya está registrado en el torneo");
+        }
+
+
+        if (contractAmount <= 0)
+        {
+            throw new InvalidOperationException(
+                "El monto del contrato debe ser mayor a 0");
+        }
+
+        var tournamentSponsor = new TournamentSponsor
+        {
+            TournamentId = tournamentId,
+            SponsorId = sponsorId,
+            ContractAmount = contractAmount,
+            JoinedAt = DateTime.UtcNow
+        };
+
+        _logger.LogInformation(
+            "Registering sponsor {SponsorId} in tournament {TournamentId} with amount {Amount}",
+            sponsorId, tournamentId, contractAmount);
+
+        await _tournamentSponsorRepository.CreateAsync(tournamentSponsor);
+    }
+
     public async Task<IEnumerable<Team>> GetTeamsByTournamentAsync(int tournamentId)
     {
         var tournament = await _tournamentRepository.GetByIdAsync(tournamentId);
@@ -180,5 +239,17 @@ public class TournamentService : ITournamentService
             .GetByTournamentAsync(tournamentId);
 
         return tournamentTeams.Select(tt => tt.Team);
+    }
+    public async Task<IEnumerable<Sponsor>> GetSponsorsByTournamentAsync(int tournamentId)
+    {
+        var tournament = await _tournamentRepository.GetByIdAsync(tournamentId);
+        if (tournament == null)
+            throw new KeyNotFoundException(
+                $"No se encontró el torneo con ID {tournamentId}");
+
+        var tournamentSponsors = await _tournamentSponsorRepository
+            .GetByTournamentAsync(tournamentId);
+
+        return tournamentSponsors.Select(ts => ts.Sponsor);
     }
 }

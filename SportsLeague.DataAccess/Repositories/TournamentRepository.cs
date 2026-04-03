@@ -26,4 +26,11 @@ public class TournamentRepository : GenericRepository<Tournament>, ITournamentRe
                 .ThenInclude(tt => tt.Team)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
+    public async Task<Tournament?> GetByIdWithSponsorsAsync(int id)
+    {
+        return await _dbSet
+            .Include(t => t.TournamentSponsors)
+                .ThenInclude(ts => ts.Sponsor)
+            .FirstOrDefaultAsync(t => t.Id == id);
+    }
 }

@@ -11,6 +11,7 @@ public class TournamentResponseDTO
     public DateTime EndDate { get; set; }
     public TournamentStatus Status { get; set; }
     public int TeamsCount { get; set; }
+    public int SponsorsCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
