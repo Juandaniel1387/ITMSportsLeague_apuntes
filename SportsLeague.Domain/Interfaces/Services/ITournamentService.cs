@@ -12,5 +12,7 @@ public interface ITournamentService
     Task DeleteAsync(int id);
     Task UpdateStatusAsync(int id, TournamentStatus newStatus);
     Task RegisterTeamAsync(int tournamentId, int teamId);
+    Task RegisterSponsorAsync(int tournamentId, int sponsorId, decimal ContractAmount);
     Task<IEnumerable<Team>> GetTeamsByTournamentAsync(int tournamentId);
+    Task<IEnumerable<Sponsor>> GetSponsorsByTournamentAsync(int tournamentId);
 }
